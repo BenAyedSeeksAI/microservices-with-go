@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
+
+	redis "github.com/redis/go-redis/v9"
 )
 
 type App struct {
 	router http.Handler
+	rdb    *redis.Client
 }
 
 func New() *App {
 	return &App{
 		router: loadRoutes(),
+		rdb:    redis.NewClient(&redis.Options{}),
 	}
 }
 func (a *App) Start(ctx context.Context) error {
@@ -20,9 +25,27 @@ func (a *App) Start(ctx context.Context) error {
 		Addr:    ":3000",
 		Handler: a.router,
 	}
-	err := server.ListenAndServe()
+	// pinging to redis
+	err := a.rdb.Ping(ctx).Err()
 	if err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
+		return fmt.Errorf("failed to connect redis: %w", err)
 	}
-	return nil
+	fmt.Println("Starting Server on https://localhost:3000/")
+	ch := make(chan error, 1)
+	go func(chError chan error) {
+		err = server.ListenAndServe()
+		if err != nil {
+			chError <- fmt.Errorf("failed to start server: %w", err)
+		}
+		close(chError)
+	}(ch)
+	select {
+	case err = <-ch:
+		return err
+	case <-ctx.Done():
+		timeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		return server.Shutdown(timeout)
+	}
+
 }

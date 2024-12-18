@@ -24,5 +24,4 @@ func loadOrderRoutes(router chi.Router) {
 	router.Get("/get/{id}", orderHandler.GetByID)
 	router.Put("/update/{id}", orderHandler.UpdateByID)
 	router.Delete("/delete/{id}", orderHandler.DeleteByID)
-
 }
