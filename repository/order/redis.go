@@ -101,7 +101,7 @@ type FindAllPage struct {
 	Offset uint64
 }
 type FindResult struct {
-	Orders []models.Order
+	Orders []model.Order
 	Cursor uint64
 }
 
